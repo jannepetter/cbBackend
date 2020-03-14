@@ -5,15 +5,7 @@ const bcrypt = require('bcryptjs');
 const middleware = require('../utils/middleware');
 const { client, findredis, setredis } = require('../utils/redis');
 const cloudinary = require('cloudinary');
-
-//cloudinary refactorointi ei onnistunu, tsekkaa sitteku ehit. Ongelmana oli
-//että heittää type errorin ku yritit poistaa kuvaa eikä poistanui kuvaa cloudinarystä
-//vaikka hävis resepteistä.
-cloudinary.config({
-  cloud_name: config.CLOUD_NAME,
-  api_key: config.CLOUD_API_KEY,
-  api_secret: config.CLOUD_API_SECRET
-});
+cloudinary.config(config.CLOUDINARY);
 
 const resolvers = {
   User: {

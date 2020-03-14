@@ -1,4 +1,4 @@
-export{}
+export { }
 const { ApolloServer, gql } = require('apollo-server-express');
 
 const typeDefs = gql`
@@ -53,4 +53,4 @@ type Token {
          ):Token @rateLimit(window: "600s", max: 3, message: "Try again later")
     }
     `
-    module.exports=typeDefs
+module.exports = typeDefs

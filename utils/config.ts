@@ -1,38 +1,44 @@
-require('dotenv').config()
+require('dotenv').config();
 
-const tokenTime = 60 * 15
-const refTokentime = 60 * 60 
+const tokenTime = 60 * 15;
+const refTokentime = 60 * 60;
 
-let MONGOURL=process.env.MONGOURL
-let PORT=process.env.PORT
+let MONGOURL = process.env.MONGOURL;
+const MONGOCONFIG = {
+  useNewUrlParser: true,
+  useFindAndModify: false,
+  useCreateIndex: true,
+  useUnifiedTopology: true
+};
 
-const CLOUD_NAME=process.env.CLOUD_NAME
-const CLOUD_API_KEY=process.env.CLOUD_API_KEY
-const CLOUD_API_SECRET=process.env.CLOUD_API_SECRET
+let PORT = process.env.PORT;
 
-const JWTVERISEKRET=process.env.JWTVERISEKRET
+const CLOUDINARY = {
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUD_API_KEY,
+  api_secret: process.env.CLOUD_API_SECRET
+};
 
-const REDISPORT=process.env.REDISPORT
-const REDISURL=process.env.REDISURL
-const REDISPASSWORD=process.env.REDISPASSWORD
+const JWTVERISEKRET = process.env.JWTVERISEKRET;
 
+const REDISPORT = process.env.REDISPORT;
+const REDISURL = process.env.REDISURL;
+const REDISPASSWORD = process.env.REDISPASSWORD;
 
-if(process.env.NODE_ENV==='test'){
-    console.log('env',process.env.NODE_ENV)
-  MONGOURL=process.env.TEST_MONGOURL
-  }
-
-
-module.exports={
-    tokenTime,
-    refTokentime,
-    MONGOURL,
-    PORT,
-    CLOUD_NAME,
-    CLOUD_API_KEY,
-    CLOUD_API_SECRET,
-    JWTVERISEKRET,
-    REDISPORT,
-    REDISURL,
-    REDISPASSWORD
+if (process.env.NODE_ENV === 'test') {
+  console.log('env', process.env.NODE_ENV);
+  MONGOURL = process.env.TEST_MONGOURL;
 }
+
+module.exports = {
+  tokenTime,
+  refTokentime,
+  MONGOURL,
+  MONGOCONFIG,
+  PORT,
+  CLOUDINARY,
+  JWTVERISEKRET,
+  REDISPORT,
+  REDISURL,
+  REDISPASSWORD
+};
