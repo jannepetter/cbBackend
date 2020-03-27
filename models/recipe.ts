@@ -1,4 +1,4 @@
-export {};
+export { };
 import mongoose = require('mongoose');
 
 const schema = new mongoose.Schema({
@@ -6,6 +6,9 @@ const schema = new mongoose.Schema({
     type: String,
     required: true,
     minlength: 2
+  },
+  description: {
+    type: String
   },
   imageUrl: {
     type: String
@@ -15,7 +18,10 @@ const schema = new mongoose.Schema({
     ref: 'User'
   },
   ingredients: [{ type: String }],
-  tags: [{ type: String }]
+  tags: [{ type: String }],
+  instructions: {
+    type: String
+  }
 });
 
 module.exports = mongoose.model('Recipe', schema);

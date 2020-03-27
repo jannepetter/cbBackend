@@ -1,5 +1,5 @@
-export{}
-const config =require('./config')
+export { }
+const config = require('./config')
 const { promisify } = require('util');
 const redis = require('redis');
 
@@ -11,7 +11,8 @@ client.auth(config.REDISPASSWORD, function (err: any) {
     }
 });
 const getAsync = promisify(client.get).bind(client);
-const setAsync = promisify(client.set).bind(client); 
+const setAsync = promisify(client.set).bind(client);
+const removeAsync = promisify(client.del).bind(client);
 
 client.on('error', function (err: any) {
     console.log('Error ' + err);
@@ -33,7 +34,11 @@ export const findredis = async (key: any) => {
         return null
     }
 }
-export const setredis = async (key: any, value: any) => {
+export const setredis = async (key: any, value: any, exp = 60 * 60 * 24) => {
     client.unref();
-    await setAsync(key, JSON.stringify(value))
+    await setAsync(key, JSON.stringify(value), 'EX', exp)
+}
+export const delredis = async (key: any) => {
+    client.unref();
+    await removeAsync(key)
 }

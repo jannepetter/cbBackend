@@ -3,9 +3,29 @@ const Recipe = require('../models/recipe');
 const User = require('../models/user');
 const bcrypt = require('bcryptjs');
 const middleware = require('../utils/middleware');
-const { client, findredis, setredis } = require('../utils/redis');
+const { client, findredis, setredis, delredis } = require('../utils/redis');
 const cloudinary = require('cloudinary');
 cloudinary.config(config.CLOUDINARY);
+
+const removerecipeRedisUpdate = async (recipeid: any, userid: any) => {
+  //tällähetkellä redisissä 3 erityyppistä avain-arvoparia
+  //yksittäiset, myrecipet ja allrecipet. Tee järkevämpi systeemi ku ehit
+  await delredis(`recipe${recipeid}`)  //yksittäinen
+  //myrecipes päivitys
+  const userRecipesRedis = await findredis(`UserRecipes${userid}`);
+  if (userRecipesRedis) {
+    const newUserRecipes = userRecipesRedis.map((r: any) => new Recipe({ ...r }))
+      .filter((r: any) => r.id !== recipeid)
+    await setredis(`UserRecipes${userid}`, newUserRecipes);
+  }
+  //allrecipes päivitys
+  const allrecipesRedis = await findredis('allrecipes');
+  if (allrecipesRedis) {
+    const newAllrecipes = allrecipesRedis.map((r: any) => new Recipe({ ...r }))
+      .filter((r: any) => r.id !== recipeid)
+    await setredis('allrecipes', newAllrecipes);
+  }
+}
 
 const resolvers = {
   User: {
@@ -32,6 +52,14 @@ const resolvers = {
   },
 
   Query: {
+    users: async (root: any, args: any, context: any) => {
+      if (!context.req.body.role || context.req.body.role !== 'admin' || !context.req.body.userId) {
+        return [];
+      }
+      const searchregex = new RegExp(args.name, 'i')
+      const users = await User.find({ username: { '$in': searchregex } })
+      return users
+    },
     myRecipes: async (root: any, args: any, context: any) => {
       try {
         if (!context.req.body.userId || !context.req.body.username) {
@@ -45,7 +73,7 @@ const resolvers = {
         }
         const user = await context.userLoader.load(context.req.body.userId);
         const recipes = await context.recipeLoader.loadMany(user.userrecipes);
-        await setredis(`UserRecipes${context.req.body.userId}`, recipes);
+        await setredis(`UserRecipes${context.req.body.userId}`, recipes, 3600);
         console.log('myrecipes haettu kannasta');
         return recipes;
       } catch (error) {
@@ -53,8 +81,24 @@ const resolvers = {
         return error;
       }
     },
+    searchRecipes: async (root: any, args: any, context: any) => {
+      const searchArr = args.name.split(' ')
+        .slice(0, 3)
+        .sort()
+        .map((n: string) => new RegExp(n, 'i'))
+      console.log('searchinggg tsitsingg', searchArr)
+
+      //näyttäs toimivan alustavasti. tee loppuun niin että toimii title pilkottuna tageiksi
+
+      const recipes = await Recipe.find({
+        tags: { '$all': searchArr }
+      }).limit(20);
+      console.log(recipes, 'jeaahhu')
+      return recipes
+    },
     allRecipes: async (root: any, args: any, context: any) => {
-      //await Recipe.deleteMany({})
+      /*  await Recipe.deleteMany({})
+       await User.deleteMany({}) */
       try {
         const found = await findredis('allrecipes');
         if (found !== null) {
@@ -63,7 +107,7 @@ const resolvers = {
           return foundrecipes;
         }
 
-        const recipes = await Recipe.find({});
+        const recipes = await Recipe.find({}).limit(20);
         await setredis('allrecipes', recipes);
         console.log('allrecipes haettu kannasta');
         return recipes;
@@ -73,12 +117,12 @@ const resolvers = {
     },
     findRecipe: async (root: any, args: { id: string }, context: any) => {
       try {
-        /*  const found = await findredis(`recipe${args.id}`)
-                 if (found) {
-                     const foundRecipe = new Recipe({ ...found })
-                     console.log('recipe cachesta')
-                     return foundRecipe
-                 } */
+        const found = await findredis(`recipe${args.id}`)
+        if (found) {
+          const foundRecipe = new Recipe({ ...found })
+          console.log('recipe cachesta')
+          return foundRecipe
+        }
         console.log('etsitää recipeeee');
         const recipe = await context.recipeLoader.load(args.id);
         console.log(recipe, 'haettu recipe kannasta');
@@ -98,7 +142,8 @@ const resolvers = {
         const user = {
           username: context.req.body.username,
           id: context.req.body.userId,
-          tokenTime
+          tokenTime,
+          role: context.req.body.role || 'user'
         };
         console.log('me tsekattu');
         return user;
@@ -119,10 +164,9 @@ const resolvers = {
     },
     createRecipe: async (root: any, args: any, context: any) => {
       try {
-        if (!context.req.body.userId) {
+        if (context.req.body.role === 'banned' || !context.req.body.userId) {
           console.log('error createrecipessä');
           return null;
-          /* throw new Error("not authenticated") */
         }
         const user = await context.userLoader.load(context.req.body.userId);
         const recipe = new Recipe({
@@ -141,20 +185,36 @@ const resolvers = {
 
     removeRecipe: async (root: any, args: any, context: any) => {
       try {
-        if (!context.req.body.userId) {
+        if (context.req.body.role === 'banned' || !context.req.body.userId) {
           console.log('error removerecipessä');
           return null;
-          /* throw new Error("not authenticated") */
         }
-        const user = await User.updateOne(
-          { _id: context.req.body.userId },
-          { $pull: { userrecipes: args.id } }
-        );
+        const checkrecipe = await Recipe.findOne({ _id: args.id }).populate('creator')
 
-        const recipe = await Recipe.findOneAndDelete({ _id: args.id });
-        cloudinary.v2.uploader.destroy(recipe.imageUrl);
-
-        return recipe;
+        if (context.req.body.role === 'admin') {
+          const user = await User.updateOne(
+            { _id: checkrecipe.creator._id },
+            { $pull: { userrecipes: args.id } }
+          );
+          const recipe = await Recipe.findOneAndDelete({ _id: args.id });
+          cloudinary.v2.uploader.destroy(recipe.imageUrl);
+          removerecipeRedisUpdate(args.id, checkrecipe.creator._id)
+          return recipe;
+        } else if (context.req.body.role === 'user') {
+          const recipeOwner = checkrecipe.creator.userrecipes.includes(args.id)
+          if (recipeOwner) {
+            console.log('ownas')
+            const user = await User.updateOne(
+              { _id: context.req.body.userId },
+              { $pull: { userrecipes: args.id } }
+            );
+            const recipe = await Recipe.findOneAndDelete({ _id: args.id });
+            cloudinary.v2.uploader.destroy(recipe.imageUrl);
+            removerecipeRedisUpdate(args.id, checkrecipe.creator._id)
+            return recipe;
+          }
+        }
+        return null
       } catch (error) {
         console.log(error);
         return error;
@@ -166,7 +226,8 @@ const resolvers = {
       const newUser = {
         username: args.username,
         password: passwordHash,
-        email: args.email
+        email: args.email,
+        role: 'user'
       };
       const user = new User({ ...newUser });
       await user.save();

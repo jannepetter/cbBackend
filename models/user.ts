@@ -1,4 +1,4 @@
-export {};
+export { };
 const mongoose = require('mongoose');
 
 const schema = new mongoose.Schema({
@@ -24,7 +24,11 @@ const schema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Recipe'
     }
-  ]
+  ],
+  role: {
+    type: String,
+    required: true
+  }
 });
 
 module.exports = mongoose.model('User', schema);
