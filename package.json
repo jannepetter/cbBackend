@@ -24,8 +24,8 @@
     "typescript": "^3.7.3"
   },
   "dependencies": {
-    "apollo-server": "^2.9.14",
-    "apollo-server-express": "^2.9.15",
+    "apollo-server": "^2.24.0",
+    "apollo-server-express": "^2.24.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.18.1",
     "cookie-parser": "^1.4.4",
@@ -40,8 +40,8 @@
     "graphql-validation-complexity": "^0.2.5",
     "helmet": "^3.21.2",
     "jsonwebtoken": "^8.5.1",
-    "lodash": "^4.17.15",
-    "mongoose": "^5.8.1",
+    "lodash": "^4.17.21",
+    "mongoose": "^5.12.7",
     "mongoose-unique-validator": "^2.0.3",
     "redis": "^2.8.0"
   }
